@@ -92,8 +92,30 @@ http.createServer(function (req, res) {
                          "You are <tt>" + req.headers.adfs_login + "</tt> at CERN and " +
                          "<tt>" + rows[0].github_login + "</tt> on GitHub.<br/>" +
                          "<a href=\"https://alisw.github.io/git-tutorial\">Proceed to the tutorial.</a>");
+                 return;
                }
                res.end("I don't know who you are on GitHub.");
+             });
+  }
+  else if (uri.pathname=='/user') {
+    var values = qs.parse(uri.query);
+    var gh_user = values.gh_user;
+    var secret = values.secret;
+    if (secret != process.env.ALICE_GITHUB_SECRET) {
+      res.writeHead(403, nocache({'Content-Type': 'application/json'}));
+      res.end('{"status": "not authorized"}');
+      return;
+    }
+    db.query("SELECT cern_login FROM alice_github.user_mapping WHERE github_login = ?;",
+             [gh_user],
+             function(err, rows) {
+               res.writeHead(200, nocache({'Content-Type': 'application/json'}));
+               if (!err && rows && rows.length) {
+                 res.end(JSON.stringify({"cern_login": rows[0].cern_login}));
+                 return;
+               }
+               res.writeHead(404, nocache({'Content-Type': 'application/json'}));
+               res.end('{"status": "not found"}');
              });
   }
   else if (uri.pathname == "/pull-request-hook") {

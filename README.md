@@ -20,3 +20,4 @@ Once you have done this you need to define the following environment variables:
 - `GITHUB_API`: the endpoint for github API. Most likely `htts://github.com/api/v3`.
 - `ALICE_GITHUB_DB`: database connection URL in the form `mysql://<user>:<password>@<hostname>:<port>`.
 - `ALICE_GITHUB_PREFIX`: endpoint prefix for the web application, _e.g._ `/alice-github`.
+- `ALICE_GITHUB_SECRET`: shared secret for querying user mappings.
