@@ -63,6 +63,7 @@ http.createServer(function (req, res) {
           USER_DB[req.headers.adfs_login] = body.login;
           res.writeHead(302, nocache({'Content-Type': 'text/html',
                                       'Location': process.env.ALICE_GITHUB_PREFIX+'/whoami'}));
+          res.end('');
         });
       });
     }
