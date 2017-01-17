@@ -2,8 +2,7 @@
 var http   = require('http')
   , url    = require('url')
   , qs     = require('querystring')
-  , github = require('octonode')
-  , mysql  = require('mysql');
+  , github = require('octonode');
 
 // GITHUB_CLIENT_ID and GITHUB_SECRET should be registered in Github
 // GITHUB_API should be something like https://github.com/api/v3
@@ -31,13 +30,7 @@ function nocache(d) {
 // Store info to verify against CSRF
 var state = auth_url.match(/&state=([0-9a-z]{32})/i);
 
-var db = mysql.createConnection(process.env.ALICE_GITHUB_DB);
-db.query("CREATE DATABASE IF NOT EXISTS alice_github;", function(err, res) {
-  db.query("CREATE TABLE IF NOT EXISTS alice_github.user_mapping (" +
-           "  cern_login VARCHAR(250) NOT NULL,"                      +
-           "   github_login VARCHAR(250) NOT NULL,"                   +
-           "   PRIMARY KEY (cern_login) );");
-});
+var USER_DB = {}
 
 // Web server
 http.createServer(function (req, res) {
@@ -67,74 +60,46 @@ http.createServer(function (req, res) {
             res.end('Unable to fetch GitHub account name.');
             return;
           }
-          db.query("INSERT INTO alice_github.user_mapping (cern_login, github_login) " +
-                   "VALUES (?, ?) ON DUPLICATE KEY UPDATE github_login = ?;",
-                   [req.headers.adfs_login, body.login, body.login],
-                   function(dberr, dbres) {
-                     res.writeHead(302, nocache({'Content-Type': 'text/html',
-                                                 'Location': process.env.ALICE_GITHUB_PREFIX+'/whoami'}));
-                     res.end('');
-                   });
+          USER_DB[req.headers.adfs_login] = body.login;
+          res.writeHead(302, nocache({'Content-Type': 'text/html',
+                                      'Location': process.env.ALICE_GITHUB_PREFIX+'/whoami'}));
         });
       });
     }
   }
   else if (uri.pathname=='/whoami') {
     console.log("/whoami:adfs_login: " + req.headers.adfs_login);
-    db.query("SELECT github_login FROM alice_github.user_mapping WHERE cern_login = ?;",
-             [req.headers.adfs_login],
-             function(err, rows) {
-               res.writeHead(200, nocache({'Content-Type': 'text/html'}));
-               console.log("/whoami:err: " + err);
-               console.log("/whoami:rows: " + JSON.stringify(rows));
-               if (!err && rows && rows.length) {
-                 res.end("Hello " + req.headers.adfs_fullname + ".<br/>" +
-                         "You are <tt>" + req.headers.adfs_login + "</tt> at CERN and " +
-                         "<tt>" + rows[0].github_login + "</tt> on GitHub.<br/>" +
-                         "<a href=\"https://alisw.github.io/git-tutorial\">Proceed to the tutorial.</a>");
-                 return;
-               }
-               res.end("I don't know who you are on GitHub.");
-             });
+    var user_cern = req.headers.adfs_login;
+    var user_github = USER_DB[user_cern];
+    res.writeHead(200, nocache({'Content-Type': 'text/html'}));
+    console.log("/whoami:rows: " + JSON.stringify([user_cern, user_github]));
+    if (user_github) {
+      res.end("Hello " + req.headers.adfs_fullname + ".<br/>" +
+              "You are <tt>" + user_cern + "</tt> at CERN and " +
+              "<tt>" + user_github + "</tt> on GitHub.<br/>" +
+              "<a href=\"https://alisw.github.io/git-tutorial\">Proceed to the tutorial.</a>");
+      return;
+    }
+    res.writeHead(302, nocache({'Content-Type': 'text/plain', 'Location': auth_url}));
+    res.end('Redirecting to ' + auth_url);
   }
-  else if (uri.pathname=='/user') {
+  else if (uri.pathname=='/users') {
     var values = qs.parse(uri.query);
-    var gh_user = values.gh_user;
     var secret = values.secret;
     if (secret != process.env.ALICE_GITHUB_SECRET) {
       res.writeHead(403, nocache({'Content-Type': 'application/json'}));
       res.end('{"status": "not authorized"}');
       return;
     }
-    db.query("SELECT cern_login FROM alice_github.user_mapping WHERE github_login = ?;",
-             [gh_user],
-             function(err, rows) {
-               res.writeHead(200, nocache({'Content-Type': 'application/json'}));
-               if (!err && rows && rows.length) {
-                 res.end(JSON.stringify({"cern_login": rows[0].cern_login}));
-                 return;
-               }
-               res.writeHead(404, nocache({'Content-Type': 'application/json'}));
-               res.end('{"status": "not found"}');
-             });
+    res.end(JSON.stringify({"login_mapping": USER_DB}));
   }
   else if (uri.pathname == "/pull-request-hook") {
     // Pull request hook should push PR for later
     // processing.
   }
   else if (uri.pathname == "/health") {
-    db.ping(function (err) {
-      if (err) {
-        res.writeHead(500, nocache({'Content-Type': 'text/plain'}));
-        res.end('{"status": "cannot ping database"}');
-        return;
-      }
-      res.writeHead(200, nocache({'Content-Type': 'text/plain'}));
-      res.end('{"status": "ok"}');
-    });
-  } else {
-    res.writeHead(404, nocache({'Content-Type': 'text/plain'}));
-    res.end('Endpoint undefined');
+    res.writeHead(200, nocache({'Content-Type': 'application/json'}));
+    res.end('{"status": "ok"}');
   }
 }).listen(8888);
 
