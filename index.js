@@ -14,7 +14,7 @@ var auth_url = github.auth.config({
   id: process.env.GITHUB_CLIENT_ID,
   secret: process.env.GITHUB_SECRET,
   apiUrl: process.env.GITHUB_API
-}).login(['user']);
+}).login(['user:read']);
 
 function nocache(d) {
   var resp = {
