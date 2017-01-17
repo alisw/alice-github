@@ -6,7 +6,7 @@ var http   = require('http')
   , mysql  = require('mysql');
 
 // GITHUB_CLIENT_ID and GITHUB_SECRET should be registered in Github
-// GITHUB_API should be something like htts://github.com/api/v3
+// GITHUB_API should be something like https://github.com/api/v3
 // WEB_URL should be https:
 //  webUrl: 'https://optional-internal-github-enterprise'
 // Build the authorization config and url
