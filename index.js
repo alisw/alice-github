@@ -102,6 +102,10 @@ http.createServer(function (req, res) {
     res.writeHead(200, nocache({'Content-Type': 'application/json'}));
     res.end('{"status": "ok"}');
   }
+  else {
+    res.writeHead(302, nocache({'Content-Type': 'text/plain', 'Location': auth_url}));
+    res.end('Path does not exists redirecting to ' + auth_url);
+  }
 }).listen(8888);
 
 console.log('Server started on 8888');
