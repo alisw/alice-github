@@ -60,7 +60,7 @@ http.createServer(function (req, res) {
             res.end('Unable to fetch GitHub account name.');
             return;
           }
-          USER_DB[req.headers.adfs_login] = body.login;
+          USER_DB[req.headers.adfs_login] = {"user_github": body.login, "fullname": req.headers.adfs_fullname};
           res.writeHead(302, nocache({'Content-Type': 'text/html',
                                       'Location': process.env.ALICE_GITHUB_PREFIX+'/whoami'}));
           res.end('');
@@ -71,7 +71,7 @@ http.createServer(function (req, res) {
   else if (uri.pathname=='/whoami') {
     console.log("/whoami:adfs_login: " + req.headers.adfs_login);
     var user_cern = req.headers.adfs_login;
-    var user_github = USER_DB[user_cern];
+    var user_github = USER_DB[user_cern].user_github;
     res.writeHead(200, nocache({'Content-Type': 'text/html'}));
     console.log("/whoami:rows: " + JSON.stringify([user_cern, user_github]));
     if (user_github) {
